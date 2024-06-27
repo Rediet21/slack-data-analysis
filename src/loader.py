@@ -44,6 +44,12 @@ def slack_parse(path):
                     reply_users_count.append(0)
                     tm_thread_end.append(0)
 
+            #save the parsed data
+            data = zip(msg_type, msg_content, sender_id, time_msg, msg_dist, time_thread_st, reply_users, \
+        reply_count, reply_users_count, tm_thread_end)
+            
+slack_parse()         
+
 
 
             

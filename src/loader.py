@@ -74,11 +74,11 @@ class SlackDataLoader:
         return userNamesById, userIdsByName 
 
     
-    def slack_parser(self, rpath):
+    def slack_parser(self, path):
         combined = []
         #json_files = glob.glob(f"{rpath}*json")
         #print(f"found JSON files : {json_files}")
-        for json_files in glob.glob(f"{rpath}*json"):
+        for json_files in glob.glob(f"{path}*json"):
             with open(json_files, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 combined.append(data)
@@ -136,37 +136,44 @@ class SlackDataLoader:
             dflist.append(df)
 
         dfall = pd.concat(dflist, ignore_index=True)
-        dfall['channel'] = rpath.split('/')[-1].split('.')[0]        
+        dfall['channel'] = path.split('/')[-1].split('.')[0]        
         dfall = dfall.reset_index(drop=True)
     
         return dfall
-                
-    # Parsing through the reactions (get Reactions)
-    def slack_reaction(path, channel):
+    
+    def slack_reaction(self, path, channel = 'Random'):
         combined = []
-        for json in glob.glob (f"{path}*json"):
-            with open (json, 'r', encoding = "utf8") as slack_data:
-                combined.append(slack_data)
+        for json_file in glob.glob(f"{path}*.json"):
+            with open(json_file, 'r', encoding="utf-8") as slack_data:
+                combined.append(json.load(slack_data))
 
-            reaction_name, reaction_count, reaction_users, msg, user_id = [], [], [], [], []
+        reaction_name, reaction_count, reaction_users, msg, user_id = [], [], [], [], []
 
-        
-            for k in combined:
-                slack_data = json.load(open(k.name,'r', encoding = "utf-8"))
+        for k in combined:
+            for i in k:
+                if 'reactions' in i:
+                    for j in range(len(i['reactions'])):
+                        reaction_name.append(i['reactions'][j]['name'])
+                        reaction_count.append(i['reactions'][j]['count'])
+                        reaction_users.append(",".join(i['reactions'][j]['users']))
+                        msg.append(i.get('text', ''))
+                        user_id.append(i.get('user', ''))
 
-                for i in enumerate(slack_data): 
-                    if 'reaction' in i.keys():
-                        for j in range(len(i['reactions'])):
-                            reaction_name.append(i['reaction'][j]['names'])
-                            reaction_users.append(i['reactions'][j]['count'])
-                            reaction_users.append(','.join(i['reaction'][j]['users']))
+        df_reaction = zip(reaction_name, reaction_count, reaction_users, msg, user_id)
+        reaction_columns = ['reaction_name', 'reaction_count', 'reaction_users', 'message', 'user_id']
+        df_reaction = pd.DataFrame(data=df_reaction, columns=reaction_columns)
+        df_reaction['channel'] = channel
+        return df_reaction
+    
+    
 
-            df_reaction = zip(reaction_name, reaction_count, reaction_users,msg, user_id)
-            reaction_column = ['reaction_name', 'reaction_count', 'reaction_users_count', 'message', 'user_id']
-            df_reaction = pd.DataFrame(data = df_reaction, columns = reaction_column)
-            df_reaction['channel'] = channel
-            return df_reaction
-        
+# Example usage:
+data = SlackDataLoader('../Data/anonymized/')
+week8_reaction = data.slack_reaction('../Data/anonymized/all-week8/')
+print(week8_reaction.head())
+
+                
+
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Export Slack history')
